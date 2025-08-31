@@ -1,6 +1,6 @@
 - more dark gray color instead of the blueish tint
-- canvas cursor look and behaviour optimization
-- dragging optimization in canvas
+- canvas cursor look and behaviour optimization (done)
+- dragging optimization in canvas (done)
 - monotone colors for the buttons
-- add more data structures: linked lists (done), trees and other graphs
+- add more data structures: linked lists (done), hash_maps, sets, trees and other graphs
 - add the code feature

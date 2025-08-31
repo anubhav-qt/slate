@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useDataStructure } from '../context/DataStructureContext';
 import { FiX, FiEdit3, FiTrash2 } from 'react-icons/fi';
 
@@ -80,7 +80,7 @@ function DataStructureVisualization({
     const [isEditingName, setIsEditingName] = useState(false);
     const [tempName, setTempName] = useState(instance.name);
     const [isDragging, setIsDragging] = useState(false);
-    const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
+    const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 });
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [tempValue, setTempValue] = useState('');
     const dragRef = useRef<HTMLDivElement>(null);
@@ -107,24 +107,65 @@ function DataStructureVisualization({
             e.target === dragRef.current ||
             (e.target as HTMLElement).closest('.drag-handle')
         ) {
-            setIsDragging(true);
-            setDragStart({ x: e.clientX, y: e.clientY });
-            e.preventDefault();
+            const rect = dragRef.current?.getBoundingClientRect();
+            if (rect) {
+                setDragOffset({
+                    x: e.clientX - rect.left,
+                    y: e.clientY - rect.top,
+                });
+                setIsDragging(true);
+                e.preventDefault();
+                e.stopPropagation();
+            }
         }
     };
 
-    const handleMouseMove = (e: React.MouseEvent) => {
-        if (isDragging) {
-            const deltaX = e.clientX - dragStart.x;
-            const deltaY = e.clientY - dragStart.y;
-            onDrag(deltaX, deltaY);
-            setDragStart({ x: e.clientX, y: e.clientY });
+    // Global mouse move handler
+    const handleGlobalMouseMove = (e: MouseEvent) => {
+        if (isDragging && dragRef.current) {
+            const canvas = dragRef.current.parentElement;
+            if (canvas) {
+                const canvasRect = canvas.getBoundingClientRect();
+                const newX = Math.max(
+                    0,
+                    e.clientX - canvasRect.left - dragOffset.x,
+                );
+                const newY = Math.max(
+                    0,
+                    e.clientY - canvasRect.top - dragOffset.y,
+                );
+
+                onDrag(newX - instance.position.x, newY - instance.position.y);
+            }
         }
     };
 
-    const handleMouseUp = () => {
+    // Global mouse up handler
+    const handleGlobalMouseUp = () => {
         setIsDragging(false);
     };
+
+    // Effect to handle global mouse events during drag
+    useEffect(() => {
+        if (isDragging) {
+            document.addEventListener('mousemove', handleGlobalMouseMove);
+            document.addEventListener('mouseup', handleGlobalMouseUp);
+            document.body.style.cursor = 'grabbing';
+            document.body.style.userSelect = 'none';
+        } else {
+            document.removeEventListener('mousemove', handleGlobalMouseMove);
+            document.removeEventListener('mouseup', handleGlobalMouseUp);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        }
+
+        return () => {
+            document.removeEventListener('mousemove', handleGlobalMouseMove);
+            document.removeEventListener('mouseup', handleGlobalMouseUp);
+            document.body.style.cursor = '';
+            document.body.style.userSelect = '';
+        };
+    }, [isDragging, dragOffset, instance.position]);
 
     const handleElementEdit = (index: number) => {
         setEditingIndex(index);
@@ -176,7 +217,7 @@ function DataStructureVisualization({
 
         return (
             <div
-                className={`${className} cursor-pointer hover:ring-2 hover:ring-blue-400`}
+                className={`${className} cursor-pointer hover:ring-2 hover:ring-blue-400 transition-all`}
                 onClick={(e) => {
                     e.stopPropagation();
                     handleElementEdit(index);
@@ -495,11 +536,15 @@ function DataStructureVisualization({
     return (
         <div
             ref={dragRef}
-            className={`absolute border-2 rounded-lg p-4 bg-gray-800 shadow-md cursor-pointer transition-all duration-200 ${
+            className={`absolute border-2 rounded-lg p-4 bg-gray-800 shadow-md transition-all duration-200 ${
                 isSelected
                     ? 'border-blue-400 shadow-lg'
                     : 'border-gray-600 hover:border-gray-500'
-            } ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+            } ${
+                isDragging
+                    ? 'cursor-grabbing shadow-2xl scale-105 z-50'
+                    : 'cursor-default'
+            }`}
             style={{
                 left: instance.position.x,
                 top: instance.position.y,
@@ -510,18 +555,16 @@ function DataStructureVisualization({
                         ? '500px'
                         : '200px',
                 minHeight: '120px',
+                transition: isDragging ? 'none' : 'all 0.2s ease',
             }}
             onClick={(e) => {
                 e.stopPropagation();
                 onSelect();
             }}
             onMouseDown={handleMouseDown}
-            onMouseMove={handleMouseMove}
-            onMouseUp={handleMouseUp}
-            onMouseLeave={handleMouseUp}
         >
             {/* Header with name and controls */}
-            <div className="flex items-center justify-between mb-2 drag-handle">
+            <div className="flex items-center justify-between mb-2 drag-handle cursor-grab hover:cursor-grab">
                 <div className="flex items-center space-x-2">
                     {isEditingName ? (
                         <input
@@ -601,7 +644,130 @@ export default function Canvas() {
         position: { x: 0, y: 0 },
     });
 
-    const handleCanvasClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    // Canvas panning state
+    const [canvasOffset, setCanvasOffset] = useState({ x: 0, y: 0 });
+    const [isPanning, setIsPanning] = useState(false);
+    const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+    const [mouseDownTime, setMouseDownTime] = useState(0);
+    const [mouseDownPos, setMouseDownPos] = useState({ x: 0, y: 0 });
+    const [hasMoved, setHasMoved] = useState(false);
+    const [currentCursor, setCurrentCursor] = useState<
+        'default' | 'add' | 'grab' | 'grabbing'
+    >('default');
+    const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+
+    const LONG_PRESS_THRESHOLD = 200; // ms
+    const MOVE_THRESHOLD = 5; // pixels
+
+    // Cursor class mapping
+    const getCursorClass = (cursor: typeof currentCursor) => {
+        switch (cursor) {
+            case 'add':
+                return 'cursor-crosshair';
+            case 'grab':
+                return 'cursor-grab';
+            case 'grabbing':
+                return 'cursor-grabbing';
+            default:
+                return 'cursor-default';
+        }
+    };
+
+    // Custom cursor style for add mode
+    const getCustomCursorStyle = (cursor: typeof currentCursor) => {
+        if (cursor === 'add') {
+            return {
+                cursor: `url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2'><circle cx='12' cy='12' r='10' fill='%23ffffff'/><path d='m9 12 6 0'/><path d='m12 9 0 6'/></svg>") 12 12, crosshair`,
+            };
+        }
+        return {};
+    };
+
+    // Function to check if mouse is over any data structure
+    const isMouseOverInstance = (
+        clientX: number,
+        clientY: number,
+        canvasElement: HTMLElement,
+    ) => {
+        const rect = canvasElement.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+
+        return instances.some((instance) => {
+            const width =
+                instance.type === 'linkedlist'
+                    ? 400
+                    : instance.type === 'doublylinkedlist'
+                    ? 500
+                    : 200;
+            const instanceRect = {
+                left: instance.position.x + canvasOffset.x,
+                top: instance.position.y + canvasOffset.y,
+                right: instance.position.x + canvasOffset.x + width,
+                bottom: instance.position.y + canvasOffset.y + 120,
+            };
+            return (
+                x >= instanceRect.left &&
+                x <= instanceRect.right &&
+                y >= instanceRect.top &&
+                y <= instanceRect.bottom
+            );
+        });
+    };
+
+    // Function to check if mouse is over a draggable area of a data structure
+    const isMouseOverDraggableArea = (
+        clientX: number,
+        clientY: number,
+        canvasElement: HTMLElement,
+    ) => {
+        const rect = canvasElement.getBoundingClientRect();
+        const x = clientX - rect.left;
+        const y = clientY - rect.top;
+
+        return instances.some((instance) => {
+            const width =
+                instance.type === 'linkedlist'
+                    ? 400
+                    : instance.type === 'doublylinkedlist'
+                    ? 500
+                    : 200;
+
+            // Check if mouse is in the header area (first ~40 pixels of height - where drag-handle is)
+            const headerHeight = 40;
+            const instanceRect = {
+                left: instance.position.x + canvasOffset.x,
+                top: instance.position.y + canvasOffset.y,
+                right: instance.position.x + canvasOffset.x + width,
+                bottom: instance.position.y + canvasOffset.y + headerHeight,
+            };
+            return (
+                x >= instanceRect.left &&
+                x <= instanceRect.right &&
+                y >= instanceRect.top &&
+                y <= instanceRect.bottom
+            );
+        });
+    };
+
+    // Update cursor based on mouse position and state
+    const updateCursor = (
+        clientX: number,
+        clientY: number,
+        canvasElement: HTMLElement,
+    ) => {
+        if (isPanning) {
+            setCurrentCursor('grabbing');
+        } else if (isMouseOverDraggableArea(clientX, clientY, canvasElement)) {
+            setCurrentCursor('grab');
+        } else if (isMouseOverInstance(clientX, clientY, canvasElement)) {
+            setCurrentCursor('default');
+        } else {
+            setCurrentCursor('add');
+        }
+    };
+
+    const handleCanvasMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
         const rect = e.currentTarget.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
@@ -615,10 +781,10 @@ export default function Canvas() {
                     ? 500
                     : 200;
             const instanceRect = {
-                left: instance.position.x,
-                top: instance.position.y,
-                right: instance.position.x + width,
-                bottom: instance.position.y + 120,
+                left: instance.position.x + canvasOffset.x,
+                top: instance.position.y + canvasOffset.y,
+                right: instance.position.x + canvasOffset.x + width,
+                bottom: instance.position.y + canvasOffset.y + 120,
             };
             return (
                 x >= instanceRect.left &&
@@ -629,14 +795,95 @@ export default function Canvas() {
         });
 
         if (!clickedInstance) {
-            // Clicked on empty space
+            // Clicked on empty space - prepare for potential pan or modal
+            setMouseDownTime(Date.now());
+            setMouseDownPos({ x: e.clientX, y: e.clientY });
+            setHasMoved(false);
+            setPanStart({
+                x: e.clientX - canvasOffset.x,
+                y: e.clientY - canvasOffset.y,
+            });
             setSelectedInstance(null);
+            setCurrentCursor('grab');
+        }
+    };
+
+    const handleCanvasMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+        // Update cursor based on current position
+        updateCursor(e.clientX, e.clientY, e.currentTarget);
+
+        if (mouseDownTime > 0) {
+            const deltaX = e.clientX - mouseDownPos.x;
+            const deltaY = e.clientY - mouseDownPos.y;
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+
+            if (distance > MOVE_THRESHOLD) {
+                setHasMoved(true);
+
+                // Check if we should start panning
+                const timeSinceMouseDown = Date.now() - mouseDownTime;
+                if (timeSinceMouseDown > LONG_PRESS_THRESHOLD || isPanning) {
+                    setIsPanning(true);
+                    setCurrentCursor('grabbing');
+                    setCanvasOffset({
+                        x: e.clientX - panStart.x,
+                        y: e.clientY - panStart.y,
+                    });
+                }
+            }
+        }
+    };
+
+    const handleCanvasMouseUp = (e: React.MouseEvent<HTMLDivElement>) => {
+        const wasMouseDown = mouseDownTime > 0;
+        const timeSinceMouseDown = Date.now() - mouseDownTime;
+
+        setMouseDownTime(0);
+        setIsPanning(false);
+
+        // Update cursor after releasing
+        updateCursor(e.clientX, e.clientY, e.currentTarget);
+
+        // Only open modal if it was a simple click (short press with minimal movement)
+        if (
+            wasMouseDown &&
+            !hasMoved &&
+            timeSinceMouseDown < LONG_PRESS_THRESHOLD
+        ) {
+            const rect = e.currentTarget.getBoundingClientRect();
+            const x = e.clientX - rect.left - canvasOffset.x;
+            const y = e.clientY - rect.top - canvasOffset.y;
+
             setModalState({
                 isOpen: true,
                 position: { x, y },
             });
         }
     };
+
+    const handleCanvasMouseLeave = () => {
+        setMouseDownTime(0);
+        setIsPanning(false);
+        setCurrentCursor('default');
+    };
+
+    // Effect to prevent text selection during panning
+    useEffect(() => {
+        if (isPanning) {
+            document.body.style.userSelect = 'none';
+        } else {
+            document.body.style.userSelect = '';
+        }
+
+        return () => {
+            document.body.style.userSelect = '';
+        };
+    }, [isPanning]);
+
+    // Initialize cursor on mount
+    useEffect(() => {
+        setCurrentCursor('add');
+    }, []);
 
     const handleConfirmAdd = () => {
         const instanceName = `${selectedDataStructure}_${instances.length + 1}`;
@@ -708,8 +955,14 @@ export default function Canvas() {
             {/* Canvas Area */}
             <div className="absolute inset-0 pt-20 p-4">
                 <div
-                    className="w-full h-full bg-gray-900 rounded-lg shadow-sm border border-gray-700 relative overflow-hidden cursor-pointer"
-                    onClick={handleCanvasClick}
+                    className={`w-full h-full bg-gray-900 rounded-lg shadow-sm border border-gray-700 relative overflow-hidden ${getCursorClass(
+                        currentCursor,
+                    )}`}
+                    style={getCustomCursorStyle(currentCursor)}
+                    onMouseDown={handleCanvasMouseDown}
+                    onMouseMove={handleCanvasMouseMove}
+                    onMouseUp={handleCanvasMouseUp}
+                    onMouseLeave={handleCanvasMouseLeave}
                 >
                     {/* Canvas Grid Background */}
                     <div
@@ -720,41 +973,72 @@ export default function Canvas() {
                                 linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)
                             `,
                             backgroundSize: '20px 20px',
+                            transform: `translate(${canvasOffset.x % 20}px, ${
+                                canvasOffset.y % 20
+                            }px)`,
                         }}
                     />
 
                     {/* Data Structure Instances */}
-                    {instances.map((instance) => (
-                        <DataStructureVisualization
-                            key={instance.id}
-                            instance={instance}
-                            isSelected={selectedInstance?.id === instance.id}
-                            onSelect={() => setSelectedInstance(instance)}
-                            onUpdateName={(newName) =>
-                                handleUpdateName(instance.id, newName)
-                            }
-                            onUpdateData={(newData) =>
-                                handleUpdateData(instance.id, newData)
-                            }
-                            onDelete={() => handleDeleteInstance(instance.id)}
-                            onDrag={(deltaX, deltaY) =>
-                                handleDragInstance(instance.id, deltaX, deltaY)
-                            }
-                        />
-                    ))}
+                    <div
+                        style={{
+                            transform: `translate(${canvasOffset.x}px, ${canvasOffset.y}px)`,
+                            transition: isPanning
+                                ? 'none'
+                                : 'transform 0.2s ease',
+                            opacity: isPanning ? 0.8 : 1,
+                        }}
+                    >
+                        {instances.map((instance) => (
+                            <DataStructureVisualization
+                                key={instance.id}
+                                instance={instance}
+                                isSelected={
+                                    selectedInstance?.id === instance.id
+                                }
+                                onSelect={() => setSelectedInstance(instance)}
+                                onUpdateName={(newName) =>
+                                    handleUpdateName(instance.id, newName)
+                                }
+                                onUpdateData={(newData) =>
+                                    handleUpdateData(instance.id, newData)
+                                }
+                                onDelete={() =>
+                                    handleDeleteInstance(instance.id)
+                                }
+                                onDrag={(deltaX, deltaY) =>
+                                    handleDragInstance(
+                                        instance.id,
+                                        deltaX,
+                                        deltaY,
+                                    )
+                                }
+                            />
+                        ))}
+                    </div>
 
                     {/* Empty Canvas Message */}
                     {instances.length === 0 && (
                         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
                             <div className="text-gray-400 text-center">
                                 <p className="text-lg">
-                                    Click anywhere to add a data structure
+                                    ➕ Click anywhere to add a data structure
                                 </p>
                                 <p className="text-sm mt-2">
                                     Select a data structure type from the
                                     toolbar first
                                 </p>
+                                <p className="text-xs mt-3 opacity-70">
+                                    💡 Hold and drag to pan the canvas
+                                </p>
                             </div>
+                        </div>
+                    )}
+
+                    {/* Panning Indicator */}
+                    {isPanning && (
+                        <div className="absolute top-4 right-4 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium pointer-events-none z-50">
+                            🖐️ Panning Canvas
                         </div>
                     )}
                 </div>
