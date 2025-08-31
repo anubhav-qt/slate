@@ -2,4 +2,5 @@
 - canvas cursor look and behaviour optimization
 - dragging optimization in canvas
 - monotone colors for the buttons
+- add more data structures: linked lists (done), trees and other graphs
 - add the code feature

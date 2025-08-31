@@ -31,6 +31,10 @@ export default function Toolbar() {
     const [customVariables, setCustomVariables] = useState<CustomVariable[]>(
         [],
     );
+    const [feedbackMessage, setFeedbackMessage] = useState<string>('');
+    const [feedbackType, setFeedbackType] = useState<
+        'success' | 'error' | 'info'
+    >('info');
 
     const {
         selectedDataStructure,
@@ -44,6 +48,8 @@ export default function Toolbar() {
         { value: 'stack', label: 'Stack' },
         { value: 'queue', label: 'Queue' },
         { value: 'deque', label: 'Deque' },
+        { value: 'linkedlist', label: 'Linked List' },
+        { value: 'doublylinkedlist', label: 'Doubly Linked List' },
     ];
 
     const getDataStructureActions = () => {
@@ -132,6 +138,67 @@ export default function Toolbar() {
                         color: 'bg-red-500 hover:bg-red-600',
                     },
                 ];
+            case 'linkedlist':
+                return [
+                    {
+                        icon: FiArrowRight,
+                        label: 'Append',
+                        color: 'bg-blue-600 hover:bg-blue-700',
+                    },
+                    {
+                        icon: FiArrowLeft,
+                        label: 'Prepend',
+                        color: 'bg-blue-500 hover:bg-blue-600',
+                    },
+                    {
+                        icon: FiPlus,
+                        label: 'Insert At',
+                        color: 'bg-green-600 hover:bg-green-700',
+                    },
+                    {
+                        icon: FiMinus,
+                        label: 'Delete At',
+                        color: 'bg-red-600 hover:bg-red-700',
+                    },
+                    {
+                        icon: FiSearch,
+                        label: 'Find',
+                        color: 'bg-purple-600 hover:bg-purple-700',
+                    },
+                ];
+            case 'doublylinkedlist':
+                return [
+                    {
+                        icon: FiArrowRight,
+                        label: 'Append',
+                        color: 'bg-blue-600 hover:bg-blue-700',
+                    },
+                    {
+                        icon: FiArrowLeft,
+                        label: 'Prepend',
+                        color: 'bg-blue-500 hover:bg-blue-600',
+                    },
+                    {
+                        icon: FiPlus,
+                        label: 'Insert At',
+                        color: 'bg-green-600 hover:bg-green-700',
+                    },
+                    {
+                        icon: FiMinus,
+                        label: 'Delete At',
+                        color: 'bg-red-600 hover:bg-red-700',
+                    },
+                    {
+                        icon: FiSearch,
+                        label: 'Find',
+                        color: 'bg-purple-600 hover:bg-purple-700',
+                    },
+                    {
+                        icon: FiRotateCcw,
+                        label: 'Reverse',
+                        color: 'bg-orange-600 hover:bg-orange-700',
+                    },
+                ];
             default:
                 return [];
         }
@@ -145,15 +212,31 @@ export default function Toolbar() {
     };
 
     const addCustomVariable = () => {
-        const name = prompt('Enter variable name (e.g., left, right, target):');
-        if (name && name.trim()) {
-            const newVariable: CustomVariable = {
-                id: Date.now().toString(),
-                name: name.trim(),
-                value: '0',
-            };
-            setCustomVariables([...customVariables, newVariable]);
-        }
+        const variableCount = customVariables.length + 1;
+        const defaultName = `var${variableCount}`;
+        const newVariable: CustomVariable = {
+            id: Date.now().toString(),
+            name: defaultName,
+            value: '0',
+        };
+        setCustomVariables([...customVariables, newVariable]);
+    };
+
+    const updateVariableName = (id: string, name: string) => {
+        setCustomVariables((prev) =>
+            prev.map((variable) =>
+                variable.id === id ? { ...variable, name } : variable,
+            ),
+        );
+    };
+
+    const showFeedback = (
+        message: string,
+        type: 'success' | 'error' | 'info' = 'info',
+    ) => {
+        setFeedbackMessage(message);
+        setFeedbackType(type);
+        setTimeout(() => setFeedbackMessage(''), 3000);
     };
 
     const updateVariableValue = (id: string, value: string) => {
@@ -187,52 +270,105 @@ export default function Toolbar() {
                     currentData.push('0');
                 }
                 updateInstance(selectedInstance.id, { data: currentData });
+                showFeedback(`${actionLabel}ed element "0"`, 'success');
                 break;
 
             case 'Push Left':
+            case 'Prepend':
                 // Initialize new elements with "0"
                 currentData.unshift('0');
                 updateInstance(selectedInstance.id, { data: currentData });
+                showFeedback(`${actionLabel}ed element "0"`, 'success');
                 break;
 
             case 'Pop':
             case 'Pop Right':
                 if (currentData.length > 0) {
-                    currentData.pop();
+                    const poppedValue = currentData.pop();
                     updateInstance(selectedInstance.id, { data: currentData });
+                    showFeedback(
+                        `${actionLabel}ped element "${poppedValue}"`,
+                        'success',
+                    );
+                } else {
+                    showFeedback(
+                        'Nothing to pop - data structure is empty',
+                        'error',
+                    );
                 }
                 break;
 
             case 'Pop Left':
             case 'Dequeue':
                 if (currentData.length > 0) {
-                    currentData.shift();
+                    const poppedValue = currentData.shift();
                     updateInstance(selectedInstance.id, { data: currentData });
+                    showFeedback(
+                        `${actionLabel}d element "${poppedValue}"`,
+                        'success',
+                    );
+                } else {
+                    showFeedback(
+                        'Nothing to remove - data structure is empty',
+                        'error',
+                    );
                 }
                 break;
 
             case 'Insert At':
-                const index = prompt('Enter index to insert at:');
-                if (index !== null) {
-                    const idx = parseInt(index);
-                    if (!isNaN(idx) && idx >= 0 && idx <= currentData.length) {
-                        currentData.splice(idx, 0, '0'); // Initialize with "0"
-                        updateInstance(selectedInstance.id, {
-                            data: currentData,
-                        });
-                    }
+                // Insert at the middle or append if empty
+                const insertIndex = Math.floor(currentData.length / 2);
+                currentData.splice(insertIndex, 0, '0');
+                updateInstance(selectedInstance.id, { data: currentData });
+                showFeedback(
+                    `Inserted element at index ${insertIndex}`,
+                    'success',
+                );
+                break;
+
+            case 'Delete At':
+                // Delete from the middle or last element if available
+                if (currentData.length > 0) {
+                    const deleteIndex = Math.floor(currentData.length / 2);
+                    const deletedValue = currentData[deleteIndex];
+                    currentData.splice(deleteIndex, 1);
+                    updateInstance(selectedInstance.id, { data: currentData });
+                    showFeedback(
+                        `Deleted "${deletedValue}" from index ${deleteIndex}`,
+                        'success',
+                    );
+                } else {
+                    showFeedback(
+                        'Nothing to delete - data structure is empty',
+                        'error',
+                    );
                 }
                 break;
 
             case 'Find':
-                const searchValue = prompt('Enter value to find:');
-                if (searchValue !== null) {
-                    const index = currentData.indexOf(searchValue.trim());
-                    if (index !== -1) {
-                        alert(`Value "${searchValue}" found at index ${index}`);
-                    } else {
-                        alert(`Value "${searchValue}" not found`);
-                    }
+                // Find the first element or show message if empty
+                if (currentData.length > 0) {
+                    const searchValue = currentData[0];
+                    showFeedback(
+                        `First element: "${searchValue}" at index 0`,
+                        'info',
+                    );
+                } else {
+                    showFeedback(
+                        'Data structure is empty - nothing to find',
+                        'error',
+                    );
+                }
+                break;
+
+            case 'Reverse':
+                if (selectedInstance.type === 'doublylinkedlist') {
+                    currentData.reverse();
+                    updateInstance(selectedInstance.id, { data: currentData });
+                    showFeedback(
+                        'Doubly linked list reversed successfully',
+                        'success',
+                    );
                 }
                 break;
 
@@ -243,9 +379,16 @@ export default function Toolbar() {
                         selectedInstance.type === 'stack'
                             ? currentData[currentData.length - 1]
                             : currentData[0];
-                    alert(`Front/Top value: ${frontValue}`);
+                    const position =
+                        selectedInstance.type === 'stack' ? 'top' : 'front';
+                    showFeedback(
+                        `${
+                            position.charAt(0).toUpperCase() + position.slice(1)
+                        } value: "${frontValue}"`,
+                        'info',
+                    );
                 } else {
-                    alert(`${selectedInstance.type} is empty`);
+                    showFeedback(`${selectedInstance.type} is empty`, 'error');
                 }
                 break;
         }
@@ -379,8 +522,14 @@ export default function Toolbar() {
                                     <input
                                         type="text"
                                         value={variable.name}
+                                        onChange={(e) =>
+                                            updateVariableName(
+                                                variable.id,
+                                                e.target.value,
+                                            )
+                                        }
                                         className="flex-1 p-1 bg-gray-800 border border-gray-600 rounded text-xs text-white focus:outline-none focus:ring-1 focus:ring-blue-500"
-                                        readOnly
+                                        placeholder="Variable name"
                                     />
                                     <input
                                         type="text"
@@ -407,6 +556,21 @@ export default function Toolbar() {
                             ))}
                         </div>
                     </div>
+
+                    {/* Feedback Messages */}
+                    {feedbackMessage && (
+                        <div
+                            className={`p-3 rounded text-sm ${
+                                feedbackType === 'success'
+                                    ? 'bg-green-800 text-green-200 border border-green-600'
+                                    : feedbackType === 'error'
+                                    ? 'bg-red-800 text-red-200 border border-red-600'
+                                    : 'bg-blue-800 text-blue-200 border border-blue-600'
+                            }`}
+                        >
+                            {feedbackMessage}
+                        </div>
+                    )}
 
                     {/* Utility Actions */}
                     <div className="space-y-2 border-t border-gray-600 pt-4">

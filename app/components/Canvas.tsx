@@ -306,6 +306,170 @@ function DataStructureVisualization({
                     </div>
                 );
 
+            case 'linkedlist':
+                return (
+                    <div className="mt-2">
+                        {/* Head Pointer */}
+                        <div className="flex items-center mb-3">
+                            <div className="flex items-center">
+                                <div className="w-10 h-6 bg-yellow-600 border border-yellow-500 rounded text-xs text-white flex items-center justify-center font-medium">
+                                    HEAD
+                                </div>
+                                <div className="w-4 h-0.5 bg-yellow-500 ml-1"></div>
+                                <div className="w-0 h-0 border-l-4 border-l-yellow-500 border-t-2 border-b-2 border-t-transparent border-b-transparent"></div>
+                            </div>
+                            {data.length === 0 && (
+                                <div className="ml-2 w-6 h-6 border-2 border-gray-500 bg-gray-800 rounded-full flex items-center justify-center">
+                                    <span className="text-xs text-gray-400">
+                                        ∅
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Linked List Nodes */}
+                        <div className="flex items-center space-x-1">
+                            {data.length === 0 ? (
+                                <div className="text-xs text-gray-400 ml-16">
+                                    Empty list - HEAD points to NULL
+                                </div>
+                            ) : (
+                                data.map((item: any, index: number) => (
+                                    <div
+                                        key={index}
+                                        className="flex items-center"
+                                    >
+                                        {/* Node with data and next pointer */}
+                                        <div className="flex border-2 border-blue-400 rounded overflow-hidden bg-gray-700">
+                                            {/* Data part */}
+                                            <EditableElement
+                                                value={item}
+                                                index={index}
+                                                className="w-12 h-12 bg-gray-700 text-white font-medium text-sm flex items-center justify-center border-r border-blue-400"
+                                            />
+                                            {/* Next pointer part */}
+                                            <div className="w-8 h-12 bg-gray-600 text-white text-xs flex items-center justify-center border-blue-400">
+                                                {index < data.length - 1 ? (
+                                                    <span className="text-blue-300">
+                                                        →
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-400">
+                                                        ∅
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Connection line to next node */}
+                                        {index < data.length - 1 && (
+                                            <div className="flex items-center mx-1">
+                                                <div className="w-4 h-0.5 bg-blue-400"></div>
+                                                <div className="w-0 h-0 border-l-4 border-l-blue-400 border-t-2 border-b-2 border-t-transparent border-b-transparent"></div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                        <div className="text-xs text-gray-400 mt-2">
+                            Each node: [Data|Next] | Size: {data.length}
+                        </div>
+                    </div>
+                );
+
+            case 'doublylinkedlist':
+                return (
+                    <div className="mt-2">
+                        {/* Head Pointer */}
+                        <div className="flex items-center mb-3">
+                            <div className="flex items-center">
+                                <div className="w-10 h-6 bg-yellow-600 border border-yellow-500 rounded text-xs text-white flex items-center justify-center font-medium">
+                                    HEAD
+                                </div>
+                                <div className="w-4 h-0.5 bg-yellow-500 ml-1"></div>
+                                <div className="w-0 h-0 border-l-4 border-l-yellow-500 border-t-2 border-b-2 border-t-transparent border-b-transparent"></div>
+                            </div>
+                            {data.length === 0 && (
+                                <div className="ml-2 w-6 h-6 border-2 border-gray-500 bg-gray-800 rounded-full flex items-center justify-center">
+                                    <span className="text-xs text-gray-400">
+                                        ∅
+                                    </span>
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Doubly Linked List Nodes */}
+                        <div className="flex items-center space-x-1">
+                            {data.length === 0 ? (
+                                <div className="text-xs text-gray-400 ml-16">
+                                    Empty list - HEAD points to NULL
+                                </div>
+                            ) : (
+                                data.map((item: any, index: number) => (
+                                    <div
+                                        key={index}
+                                        className="flex items-center"
+                                    >
+                                        {/* Node with prev, data, and next pointer */}
+                                        <div className="flex border-2 border-purple-400 rounded overflow-hidden bg-gray-700">
+                                            {/* Prev pointer part */}
+                                            <div className="w-6 h-12 bg-gray-600 text-white text-xs flex items-center justify-center border-r border-purple-400">
+                                                {index > 0 ? (
+                                                    <span className="text-purple-300">
+                                                        ←
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-400">
+                                                        ∅
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {/* Data part */}
+                                            <EditableElement
+                                                value={item}
+                                                index={index}
+                                                className="w-12 h-12 bg-gray-700 text-white font-medium text-sm flex items-center justify-center border-r border-purple-400"
+                                            />
+                                            {/* Next pointer part */}
+                                            <div className="w-6 h-12 bg-gray-600 text-white text-xs flex items-center justify-center border-purple-400">
+                                                {index < data.length - 1 ? (
+                                                    <span className="text-purple-300">
+                                                        →
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-400">
+                                                        ∅
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        {/* Bidirectional connection lines to next node */}
+                                        {index < data.length - 1 && (
+                                            <div className="flex flex-col items-center mx-1">
+                                                {/* Forward arrow */}
+                                                <div className="flex items-center mb-0.5">
+                                                    <div className="w-3 h-0.5 bg-purple-400"></div>
+                                                    <div className="w-0 h-0 border-l-3 border-l-purple-400 border-t-1 border-b-1 border-t-transparent border-b-transparent"></div>
+                                                </div>
+                                                {/* Backward arrow */}
+                                                <div className="flex items-center">
+                                                    <div className="w-0 h-0 border-r-3 border-r-purple-400 border-t-1 border-b-1 border-t-transparent border-b-transparent"></div>
+                                                    <div className="w-3 h-0.5 bg-purple-400"></div>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                        <div className="text-xs text-gray-400 mt-2">
+                            Each node: [Prev|Data|Next] | Size: {data.length}
+                        </div>
+                    </div>
+                );
+
             default:
                 return (
                     <div className="text-sm text-white mt-2">
@@ -339,7 +503,12 @@ function DataStructureVisualization({
             style={{
                 left: instance.position.x,
                 top: instance.position.y,
-                minWidth: '200px',
+                minWidth:
+                    instance.type === 'linkedlist'
+                        ? '400px'
+                        : instance.type === 'doublylinkedlist'
+                        ? '500px'
+                        : '200px',
                 minHeight: '120px',
             }}
             onClick={(e) => {
@@ -439,10 +608,16 @@ export default function Canvas() {
 
         // Check if click is on an existing instance
         const clickedInstance = instances.find((instance) => {
+            const width =
+                instance.type === 'linkedlist'
+                    ? 400
+                    : instance.type === 'doublylinkedlist'
+                    ? 500
+                    : 200;
             const instanceRect = {
                 left: instance.position.x,
                 top: instance.position.y,
-                right: instance.position.x + 200,
+                right: instance.position.x + width,
                 bottom: instance.position.y + 120,
             };
             return (

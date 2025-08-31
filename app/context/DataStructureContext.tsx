@@ -2,7 +2,13 @@
 
 import { createContext, useContext, useState, ReactNode } from 'react';
 
-export type DataStructure = 'array' | 'stack' | 'queue' | 'deque';
+export type DataStructure =
+    | 'array'
+    | 'stack'
+    | 'queue'
+    | 'deque'
+    | 'linkedlist'
+    | 'doublylinkedlist';
 
 export interface DataStructureInstance {
     id: string;
