@@ -1,0 +1,5 @@
+- more dark gray color instead of the blueish tint
+- canvas cursor look and behaviour optimization
+- dragging optimization in canvas
+- monotone colors for the buttons
+- add the code feature
